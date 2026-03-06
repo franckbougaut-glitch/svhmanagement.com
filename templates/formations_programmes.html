@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section prose-section compact-page trainings-catalog-page">
+  <h2>{{ tr('formations.catalog_button') }}</h2>
+
+  <p class="catalog-intro">{{ tr('programs.catalog_intro') }}</p>
+
+  {% if catalog_items %}
+    <div class="catalog-filters">
+      <p class="catalog-filters-label">{{ tr('programs.filter_label') }}</p>
+      <div class="catalog-filter-chips" role="toolbar" aria-label="{{ tr('programs.filter_label') }}">
+        {% for filter in catalog_filters %}
+          <button
+            type="button"
+            class="catalog-filter-chip{% if loop.first %} is-active{% endif %}"
+            data-filter="{{ filter.key }}"
+          >
+            {{ filter.label }}
+          </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="training-catalog-grid">
+      {% for item in catalog_items %}
+        <article class="training-catalog-card" data-category="{{ item.category }}">
+          <div class="training-catalog-preview">
+            <iframe
+              src="{{ item.file_url }}#page=1&view=FitH"
+              title="{{ tr('programs.catalog_image_alt') }} — {{ item.title }}"
+              loading="lazy"
+            ></iframe>
+          </div>
+
+          <div class="training-catalog-body">
+            <h3>{{ item.title }}</h3>
+            <div class="training-catalog-actions">
+              <a class="button" href="{{ item.file_url }}" download>{{ tr('resources.download') }}</a>
+              <a class="catalog-link" target="_blank" rel="noopener" href="{{ item.file_url }}">{{ tr('resources.preview') }}</a>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+
+    <p class="catalog-filter-empty" id="catalog-filter-empty" hidden>{{ tr('programs.filter_empty') }}</p>
+
+    <script>
+      (() => {
+        const chips = Array.from(document.querySelectorAll(".catalog-filter-chip"));
+        const cards = Array.from(document.querySelectorAll(".training-catalog-card"));
+        const emptyState = document.getElementById("catalog-filter-empty");
+        if (!chips.length || !cards.length) {
+          return;
+        }
+
+        const applyFilter = (filterKey) => {
+          let visibleCount = 0;
+          cards.forEach((card) => {
+            const category = card.dataset.category || "";
+            const match = filterKey === "all" || category === filterKey;
+            card.hidden = !match;
+            if (match) {
+              visibleCount += 1;
+            }
+          });
+          if (emptyState) {
+            emptyState.hidden = visibleCount > 0;
+          }
+        };
+
+        chips.forEach((chip) => {
+          chip.addEventListener("click", () => {
+            chips.forEach((btn) => btn.classList.remove("is-active"));
+            chip.classList.add("is-active");
+            applyFilter(chip.dataset.filter || "all");
+          });
+        });
+      })();
+    </script>
+  {% else %}
+    <p>{{ tr('programs.catalog_empty') }}</p>
+  {% endif %}
+</section>
+{% endblock %}

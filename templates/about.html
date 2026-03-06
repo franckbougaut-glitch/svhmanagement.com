@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section prose-section">
+  <h2>{{ tr('about.heading') }}</h2>
+
+  <img
+    class="about-franck"
+    src="{{ url_for('static', filename='img/gallery/Franck.jpg') }}"
+    alt="Franck BOUGAUT"
+  >
+
+  {% for paragraph in tr('about.intro') %}
+    <p>{{ paragraph | safe }}</p>
+  {% endfor %}
+
+  {% set about_quote = tr('about.quote') %}
+  {% if about_quote %}
+    <blockquote>
+      {% for paragraph in about_quote %}
+        <p>{{ paragraph }}</p>
+      {% endfor %}
+    </blockquote>
+  {% endif %}
+
+  <p>{{ tr('about.list_intro') | safe }}</p>
+
+  <ul class="bullet-list">
+    {% for item in tr('about.bullets') %}
+      <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+
+  <p>{{ tr('about.values') | safe }}</p>
+
+  {% set signature_quote = tr('about.signature_quote') %}
+  {% if signature_quote %}
+    <p class="about-signature-quote"><em>« {{ signature_quote }} »</em></p>
+  {% endif %}
+
+  <div class="signature">
+    <strong>Franck BOUGAUT</strong><br>
+    {{ tr('about.signature_role') }}
+  </div>
+</section>
+{% endblock %}

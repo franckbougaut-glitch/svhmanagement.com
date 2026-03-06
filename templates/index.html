@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="home-intro">
+    <img
+      class="home-logo-left"
+      src="{{ url_for('static', filename='img/logo-svh.png') }}"
+      alt="Logo SVH"
+    >
+
+    <div class="home-intro-text">
+      <h2 class="home-title">{{ tr('home.title') }}</h2>
+      {% for line in tr('home.lines') %}
+        {% if line.startswith('::bell::') %}
+          <p class="hand-text hand-text-bell"><span class="home-bell-icon" aria-hidden="true"></span>{{ line[8:] }}</p>
+        {% else %}
+          <p class="hand-text">{{ line }}</p>
+        {% endif %}
+      {% endfor %}
+
+      <div class="home-vision">
+        <h3 class="home-vision-title">{{ tr('home.vision_title') }}</h3>
+        {% for paragraph in tr('home.vision_intro') %}
+          <p class="home-vision-intro">{{ paragraph }}</p>
+        {% endfor %}
+      </div>
+
+      <div class="svh-triptych">
+        {% for item in tr('home.triptych') %}
+          <article class="svh-triptych-item">
+            {% set image_filename = 'img/gallery/Sonnette.jpg' if loop.index0 == 0 else ('img/gallery/Valeurs.jpg' if loop.index0 == 1 else 'img/gallery/Humain.jpg') %}
+            <img
+              class="svh-triptych-image"
+              src="{{ url_for('static', filename=image_filename) }}"
+              alt="{{ item.after }}"
+            >
+            <h3 class="svh-triptych-title">
+              {% if item.before %}
+                <span class="svh-triptych-text">{{ item.before }}</span>
+              {% endif %}
+              <span class="svh-triptych-letter">{{ item.letter }}</span>
+              <span class="svh-triptych-text">{{ item.after }}</span>
+            </h3>
+            {% if item.body %}
+              <p class="svh-triptych-body">{{ item.body }}</p>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+
+      <div class="home-vision-closing">
+        {% for line in tr('home.vision_closing') %}
+          <p>{{ line }}</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

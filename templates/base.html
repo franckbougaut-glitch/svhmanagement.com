@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Londrina+Shadow&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="page-{{ active_key }}">
+<header class="site-header">
+  <div class="top-nav-wrap">
+    <div class="container top-nav">
+      <a class="brand" href="{{ url_for('home') }}">
+        <img src="{{ shared_logo }}" alt="{{ tr('brand.alt') }}">
+        <span>S.V.H Management</span>
+      </a>
+      <div class="top-nav-right">
+        <nav class="menu" aria-label="{{ tr('menu.main_aria') }}">
+          {% for item in nav_items %}
+            {% if item.children %}
+              <div class="menu-item has-submenu {% if active_key == item.key %}active{% endif %}">
+                <a href="{{ url_for(item.endpoint) }}">{{ tr(item.label_key) }}</a>
+                <div class="submenu">
+                  {% for child in item.children %}
+                    <a href="{{ url_for(child.endpoint) }}">{{ tr(child.label_key) }}</a>
+                  {% endfor %}
+                </div>
+              </div>
+            {% else %}
+              <a class="menu-item {% if active_key == item.key %}active{% endif %}" href="{{ url_for(item.endpoint) }}">{{ tr(item.label_key) }}</a>
+            {% endif %}
+          {% endfor %}
+        </nav>
+
+        <div class="language-picker" aria-label="{{ tr('language.chooser_aria') }}">
+          <span class="language-picker-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10 10-4.49 10-10S17.51 2 12 2zm6.93 9h-3.02a15.7 15.7 0 0 0-1.22-5.04A8.03 8.03 0 0 1 18.93 11zM12 4c.97 1.39 1.74 3.66 1.93 7h-3.86C10.26 7.66 11.03 5.39 12 4zM4.07 13h3.02c.16 1.8.61 3.5 1.22 5.04A8.03 8.03 0 0 1 4.07 13zM7.09 11H4.07a8.03 8.03 0 0 1 4.24-5.04A15.7 15.7 0 0 0 7.09 11zM12 20c-.97-1.39-1.74-3.66-1.93-7h3.86c-.19 3.34-.96 5.61-1.93 7zm2.31-1.96A15.7 15.7 0 0 0 15.53 13h3.02a8.03 8.03 0 0 1-4.24 5.04z"/>
+            </svg>
+          </span>
+          <select
+            id="site-language-select"
+            class="language-picker-select"
+            aria-label="{{ tr('language.title') }}"
+            onchange="if (this.value) { window.location.href = this.value; }"
+          >
+            {% for option in language_options %}
+              <option value="{{ option.url }}" {% if option.code == current_lang %}selected{% endif %}>
+                {{ option.flag }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="hero" style="background-image: url('{{ hero_image }}');">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      {% if hero_logo %}
+        <img class="hero-logo" src="{{ hero_logo }}" alt="S.V.H Management">
+      {% endif %}
+      {% if hero_title %}
+        <h1>{{ hero_title }}</h1>
+      {% endif %}
+    </div>
+  </section>
+</header>
+
+<main class="container page-content">
+  {% block content %}{% endblock %}
+</main>
+
+<script>
+  (() => {
+    const targetEmail = "contact@svhmanagement.fr";
+    const skipTags = new Set(["A", "SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA", "INPUT"]);
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode(node) {
+          if (!node.nodeValue || !node.nodeValue.includes(targetEmail)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          const parent = node.parentElement;
+          if (!parent || skipTags.has(parent.tagName)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      }
+    );
+
+    const matches = [];
+    while (walker.nextNode()) {
+      matches.push(walker.currentNode);
+    }
+
+    matches.forEach((textNode) => {
+      const source = textNode.nodeValue || "";
+      const parts = source.split(targetEmail);
+      if (parts.length < 2 || !textNode.parentNode) {
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      parts.forEach((part, idx) => {
+        if (part) {
+          fragment.appendChild(document.createTextNode(part));
+        }
+        if (idx < parts.length - 1) {
+          const link = document.createElement("a");
+          link.href = `mailto:${targetEmail}`;
+          link.textContent = targetEmail;
+          link.className = "mailto-linkified";
+          fragment.appendChild(link);
+        }
+      });
+
+      textNode.parentNode.replaceChild(fragment, textNode);
+    });
+  })();
+</script>
+</body>
+</html>

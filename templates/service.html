@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section prose-section">
+  <h2>{{ tr('service.title') }}</h2>
+  <p>{{ tr('service.subtitle') }}</p>
+  <p>{{ tr('service.highlights') }}</p>
+
+  <h3>{{ tr('service.mission_title') }}</h3>
+  {% for paragraph in tr('service.mission') %}
+    <p>{{ paragraph }}</p>
+  {% endfor %}
+
+  <h3>{{ tr('service.experience_title') }}</h3>
+  {% for paragraph in tr('service.experience_intro') %}
+    <p>{{ paragraph }}</p>
+  {% endfor %}
+
+  <ul class="bullet-list">
+    {% for step in tr('service.experience_steps') %}
+      <li>{{ step }}</li>
+    {% endfor %}
+  </ul>
+
+  <p>{{ tr('service.experience_outro') }}</p>
+
+  <h3>{{ tr('service.domains_title') }}</h3>
+  <p>{{ tr('service.domains_intro') }}</p>
+  {% set domain_images = [
+    'img/gallery/directeur1.jpg',
+    'img/gallery/reception1.jpg',
+    'img/gallery/formation1.jpg',
+    'img/gallery/conseil1.jpg'
+  ] %}
+  <div class="service-domain-grid">
+    {% for item in tr('service.domains') %}
+      <article class="service-domain-card">
+        <div class="service-domain-text">
+          <h4>{{ item.title }}</h4>
+          <p>{{ item.body }}</p>
+        </div>
+        <img
+          class="service-domain-image"
+          src="{{ url_for('static', filename=domain_images[loop.index0]) }}"
+          alt="{{ item.title }}"
+        >
+      </article>
+    {% endfor %}
+  </div>
+
+  <h3>{{ tr('service.values_title') }}</h3>
+  <p>{{ tr('service.values_intro') }}</p>
+  <ul class="bullet-list">
+    {% for item in tr('service.values') %}
+      <li>
+        <strong>{{ item.title }}</strong><br>
+        {{ item.body }}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

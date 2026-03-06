@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section prose-section">
+  {% for paragraph in tr('consulting.paragraphs') %}
+    <p>{{ paragraph | safe }}</p>
+  {% endfor %}
+</section>
+{% endblock %}

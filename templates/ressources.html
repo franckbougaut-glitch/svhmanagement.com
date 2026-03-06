@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section prose-section resources-page">
+  <div class="resources-intro">
+    <img
+      class="resources-intro-image"
+      src="{{ url_for('static', filename='img/gallery/le-petit-hotelier.png') }}"
+      alt="{{ tr('resources.intro_title') }}"
+    >
+
+    <div class="resources-intro-text">
+      <h2>{{ tr('resources.intro_title') }}</h2>
+      <p>{{ tr('resources.intro_text') }}</p>
+    </div>
+  </div>
+
+  {% if not premium_access %}
+    <div class="premium-gate">
+      <h3>{{ tr('resources.premium_title') }}</h3>
+      <p>{{ tr('resources.premium_desc') }}</p>
+
+      {% if premium_error %}
+        <p class="premium-error">{{ premium_error }}</p>
+      {% endif %}
+
+      <form class="premium-form" method="post" action="{{ url_for('ressources') }}">
+        <div class="premium-grid">
+          <label>
+            {{ tr('forms.first_name') }}
+            <input type="text" name="first_name" value="{{ premium_form.first_name }}" required>
+          </label>
+          <label>
+            {{ tr('forms.last_name') }}
+            <input type="text" name="last_name" value="{{ premium_form.last_name }}" required>
+          </label>
+          <label>
+            {{ tr('forms.email') }}
+            <input type="email" name="email" value="{{ premium_form.email }}" required>
+          </label>
+          <label>
+            {{ tr('forms.phone') }}
+            <input type="text" name="phone" value="{{ premium_form.phone }}" required>
+          </label>
+        </div>
+
+        <button class="button" type="submit">{{ tr('resources.unlock_button') }}</button>
+      </form>
+    </div>
+  {% else %}
+    <div class="premium-unlocked">
+      <p>{{ tr('resources.access_validated') }}{% if premium_identity %} {{ tr('resources.for') }} <strong>{{ premium_identity }}</strong>{% endif %}.</p>
+      <p>{{ tr('resources.files_available', count=resources_count) }}</p>
+    </div>
+
+    {% if drive_resources %}
+      <div class="resources-controls">
+        <label class="resources-select-label" for="resources-title-select">{{ tr('resources.select_label') }}</label>
+        <div class="resources-select-group">
+          <select id="resources-title-select" class="resources-title-select">
+            {% for item in drive_resources %}
+              <option value="resource-card-{{ loop.index0 }}">{{ item.title }}</option>
+            {% endfor %}
+          </select>
+          <button class="button resources-go-button" id="resources-go-button" type="button">{{ tr('resources.select_button') }}</button>
+        </div>
+      </div>
+
+      <div class="resources-scroller-wrap">
+        <button
+          class="resources-nav-arrow resources-nav-prev"
+          id="resources-nav-prev"
+          type="button"
+          aria-label="{{ tr('resources.scroll_prev') }}"
+        >
+          &#x2039;
+        </button>
+
+        <div class="resources-marquee" id="resources-marquee" aria-label="{{ tr('resources.ticker_aria') }}">
+          <div class="resources-marquee-track" id="resources-marquee-track">
+            {% for item in drive_resources %}
+              <article class="resource-marquee-card" id="resource-card-{{ loop.index0 }}">
+                <a class="resource-marquee-cover" target="_blank" rel="noopener" href="{{ item.view_url }}">
+                  <img
+                    src="{{ item.thumbnail_url or url_for('static', filename='img/gallery/le-petit-hotelier.png') }}"
+                    alt="{{ tr('resources.cover_alt', title=item.title) }}"
+                    loading="lazy"
+                  >
+                </a>
+                <div class="resource-marquee-body">
+                  <h4>{{ item.title }}</h4>
+                  <div class="resource-marquee-actions">
+                    <a class="button" target="_blank" rel="noopener" href="{{ item.download_url }}">{{ tr('resources.download') }}</a>
+                    <a class="resource-link" target="_blank" rel="noopener" href="{{ item.view_url }}">{{ tr('resources.preview') }}</a>
+                  </div>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        </div>
+
+        <button
+          class="resources-nav-arrow resources-nav-next"
+          id="resources-nav-next"
+          type="button"
+          aria-label="{{ tr('resources.scroll_next') }}"
+        >
+          &#x203A;
+        </button>
+      </div>
+
+      <script>
+        (() => {
+          const scroller = document.getElementById("resources-marquee");
+          const track = document.getElementById("resources-marquee-track");
+          const prevButton = document.getElementById("resources-nav-prev");
+          const nextButton = document.getElementById("resources-nav-next");
+          const titleSelect = document.getElementById("resources-title-select");
+          const goButton = document.getElementById("resources-go-button");
+
+          if (!scroller || !track) {
+            return;
+          }
+
+          const cards = Array.from(track.querySelectorAll(".resource-marquee-card"));
+          if (!cards.length) {
+            return;
+          }
+
+          const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+          let autoScrollTimer = null;
+          let resumeTimer = null;
+          let loopWidth = 0;
+
+          const cloneCards = () => {
+            const fragment = document.createDocumentFragment();
+            cards.forEach((card) => {
+              const clone = card.cloneNode(true);
+              clone.removeAttribute("id");
+              clone.setAttribute("aria-hidden", "true");
+              clone.querySelectorAll("a").forEach((link) => {
+                link.setAttribute("tabindex", "-1");
+                link.setAttribute("aria-hidden", "true");
+              });
+              fragment.appendChild(clone);
+            });
+            track.appendChild(fragment);
+          };
+
+          const updateLoopWidth = () => {
+            loopWidth = track.scrollWidth / 2;
+          };
+
+          const normalizeLoop = () => {
+            if (!loopWidth) {
+              return;
+            }
+            if (scroller.scrollLeft >= loopWidth) {
+              scroller.scrollLeft -= loopWidth;
+            } else if (scroller.scrollLeft < 0) {
+              scroller.scrollLeft += loopWidth;
+            }
+          };
+
+          const stopAutoScroll = () => {
+            if (autoScrollTimer) {
+              window.clearInterval(autoScrollTimer);
+              autoScrollTimer = null;
+            }
+          };
+
+          const startAutoScroll = () => {
+            if (reduceMotionQuery.matches || autoScrollTimer) {
+              return;
+            }
+            autoScrollTimer = window.setInterval(() => {
+              scroller.scrollLeft += 1;
+              normalizeLoop();
+            }, 22);
+          };
+
+          const pauseThenResume = () => {
+            stopAutoScroll();
+            if (resumeTimer) {
+              window.clearTimeout(resumeTimer);
+            }
+            if (!reduceMotionQuery.matches) {
+              resumeTimer = window.setTimeout(startAutoScroll, 3800);
+            }
+          };
+
+          const scrollByStep = (direction) => {
+            if (direction < 0 && scroller.scrollLeft <= 8) {
+              scroller.scrollLeft += loopWidth;
+            }
+            const step = Math.max(230, Math.round(scroller.clientWidth * 0.85));
+            scroller.scrollBy({ left: direction * step, behavior: "smooth" });
+            pauseThenResume();
+          };
+
+          const scrollToSelectedTitle = () => {
+            if (!titleSelect) {
+              return;
+            }
+            const targetId = titleSelect.value;
+            if (!targetId) {
+              return;
+            }
+            const target = document.getElementById(targetId);
+            if (!target) {
+              return;
+            }
+            scroller.scrollTo({ left: Math.max(0, target.offsetLeft - 8), behavior: "smooth" });
+            pauseThenResume();
+          };
+
+          cloneCards();
+          updateLoopWidth();
+          startAutoScroll();
+
+          prevButton?.addEventListener("click", () => scrollByStep(-1));
+          nextButton?.addEventListener("click", () => scrollByStep(1));
+          goButton?.addEventListener("click", scrollToSelectedTitle);
+          scroller.addEventListener("scroll", normalizeLoop, { passive: true });
+
+          scroller.addEventListener("mouseenter", stopAutoScroll);
+          scroller.addEventListener("mouseleave", startAutoScroll);
+          scroller.addEventListener("focusin", stopAutoScroll);
+          scroller.addEventListener("focusout", startAutoScroll);
+
+          window.addEventListener("resize", () => {
+            updateLoopWidth();
+            normalizeLoop();
+          });
+
+          const onMotionChange = () => {
+            stopAutoScroll();
+            if (!reduceMotionQuery.matches) {
+              startAutoScroll();
+            }
+          };
+
+          if (typeof reduceMotionQuery.addEventListener === "function") {
+            reduceMotionQuery.addEventListener("change", onMotionChange);
+          } else if (typeof reduceMotionQuery.addListener === "function") {
+            reduceMotionQuery.addListener(onMotionChange);
+          }
+        })();
+      </script>
+    {% else %}
+      <p>{{ tr('resources.no_files') }}</p>
+    {% endif %}
+  {% endif %}
+</section>
+{% endblock %}

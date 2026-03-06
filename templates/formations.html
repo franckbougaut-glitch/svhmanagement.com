@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section prose-section">
+  <h2>{{ tr('formations.heading') }}</h2>
+
+  {% for paragraph in tr('formations.paragraphs') %}
+    <p>{{ paragraph | safe }}</p>
+  {% endfor %}
+
+  <div class="formations-actions">
+    <a class="button" href="{{ url_for('formations_programmes') }}">{{ tr('formations.catalog_button') }}</a>
+  </div>
+</section>
+{% endblock %}

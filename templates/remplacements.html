@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section prose-section">
+  <p>{{ tr('replacements.intro') | safe }}</p>
+
+  <ol class="numbered-list">
+    {% for offer in tr('replacements.offers') %}
+      <li>{{ offer | safe }}</li>
+    {% endfor %}
+  </ol>
+
+  {% for paragraph in tr('replacements.paragraphs') %}
+    <p>{{ paragraph | safe }}</p>
+  {% endfor %}
+
+  <h3 class="replacement-form-title">{{ tr('replacements.form_title') }}</h3>
+
+  <form id="replacement-form" class="contact-form replacement-form" action="mailto:contact@svhmanagement.fr" method="get">
+    <div class="contact-grid">
+      <label>
+        {{ tr('forms.last_name') }}
+        <input id="replacement-last-name" name="last_name" type="text" required>
+      </label>
+
+      <label>
+        {{ tr('forms.first_name') }}
+        <input id="replacement-first-name" name="first_name" type="text" required>
+      </label>
+
+      <label>
+        {{ tr('forms.mail') }}
+        <input id="replacement-email" name="email" type="email" required>
+      </label>
+
+      <label>
+        {{ tr('forms.phone') }}
+        <input id="replacement-phone" name="phone" type="tel" required>
+      </label>
+    </div>
+
+    <label>
+      {{ tr('forms.position_label') }}
+      <select id="replacement-position" name="position" required>
+        <option value="" selected disabled>{{ tr('forms.position_placeholder') }}</option>
+        <option value="{{ tr('forms.position_direction') }}">{{ tr('forms.position_direction') }}</option>
+        <option value="{{ tr('forms.position_receptionist') }}">{{ tr('forms.position_receptionist') }}</option>
+        <option value="{{ tr('forms.position_other') }}">{{ tr('forms.position_other') }}</option>
+      </select>
+    </label>
+
+    <label>
+      {{ tr('forms.text_area') }}
+      <textarea id="replacement-message" name="message" rows="6" required></textarea>
+    </label>
+
+    <button type="submit" class="button">{{ tr('forms.send_request') }}</button>
+  </form>
+
+  <div class="freelance-block">
+    <h3 class="replacement-form-title">{{ tr('replacements.freelance_title') }}</h3>
+    <p>{{ tr('replacements.freelance_intro') }}</p>
+
+    <button id="freelance-toggle" type="button" class="button">{{ tr('replacements.freelance_button') }}</button>
+
+    {% if freelance_success %}
+      <p class="freelance-success">{{ freelance_success }}</p>
+    {% endif %}
+
+    <form
+      id="freelance-form"
+      class="contact-form replacement-form freelance-form{% if not freelance_open %} is-hidden{% endif %}"
+      action="{{ url_for('remplacements') }}"
+      method="post"
+      enctype="multipart/form-data"
+    >
+      <input type="hidden" name="form_kind" value="freelance">
+
+      {% if freelance_error %}
+        <p class="premium-error">{{ freelance_error }}</p>
+      {% endif %}
+
+      <div class="contact-grid">
+        <label>
+          {{ tr('forms.last_name') }}
+          <input name="last_name" type="text" value="{{ freelance_form.last_name }}" required>
+        </label>
+
+        <label>
+          {{ tr('forms.first_name') }}
+          <input name="first_name" type="text" value="{{ freelance_form.first_name }}" required>
+        </label>
+
+        <label>
+          {{ tr('forms.mail') }}
+          <input name="email" type="email" value="{{ freelance_form.email }}" required>
+        </label>
+
+        <label>
+          {{ tr('forms.phone') }}
+          <input name="phone" type="tel" value="{{ freelance_form.phone }}" required>
+        </label>
+      </div>
+
+      <label>
+        {{ tr('forms.geo_area') }}
+        <input name="geo_area" type="text" value="{{ freelance_form.geo_area }}" required>
+      </label>
+
+      <label>
+        {{ tr('forms.available_job') }}
+        <select name="available_job" required>
+          <option value="" disabled {% if not freelance_form.available_job %}selected{% endif %}>{{ tr('forms.position_placeholder') }}</option>
+          <option value="{{ tr('forms.position_direction') }}" {% if freelance_form.available_job == tr('forms.position_direction') %}selected{% endif %}>{{ tr('forms.position_direction') }}</option>
+          <option value="{{ tr('forms.position_reception') }}" {% if freelance_form.available_job == tr('forms.position_reception') %}selected{% endif %}>{{ tr('forms.position_reception') }}</option>
+          <option value="{{ tr('forms.position_kitchen') }}" {% if freelance_form.available_job == tr('forms.position_kitchen') %}selected{% endif %}>{{ tr('forms.position_kitchen') }}</option>
+          <option value="{{ tr('forms.position_service') }}" {% if freelance_form.available_job == tr('forms.position_service') %}selected{% endif %}>{{ tr('forms.position_service') }}</option>
+          <option value="{{ tr('forms.position_housekeeping') }}" {% if freelance_form.available_job == tr('forms.position_housekeeping') %}selected{% endif %}>{{ tr('forms.position_housekeeping') }}</option>
+          <option value="{{ tr('forms.position_training') }}" {% if freelance_form.available_job == tr('forms.position_training') %}selected{% endif %}>{{ tr('forms.position_training') }}</option>
+        </select>
+      </label>
+
+      <label>
+        {{ tr('forms.cv_file') }}
+        <input name="cv_file" type="file" accept=".pdf,.doc,.docx" required>
+      </label>
+      <p class="contact-help">{{ tr('forms.cv_help') }}</p>
+
+      <button type="submit" class="button">{{ tr('forms.send_application') }}</button>
+    </form>
+  </div>
+</section>
+
+<script>
+  (function () {
+    const form = document.getElementById("replacement-form");
+    if (!form) return;
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      const lastName = document.getElementById("replacement-last-name").value.trim();
+      const firstName = document.getElementById("replacement-first-name").value.trim();
+      const email = document.getElementById("replacement-email").value.trim();
+      const phone = document.getElementById("replacement-phone").value.trim();
+      const position = document.getElementById("replacement-position").value.trim();
+      const message = document.getElementById("replacement-message").value.trim();
+
+      const subjectPrefix = {{ tr('replacements.script.subject_prefix')|tojson }};
+      const subjectFallback = {{ tr('replacements.script.subject_fallback')|tojson }};
+      const subject = subjectPrefix + (position || subjectFallback);
+      const body = [
+        {{ tr('replacements.script.line_last_name')|tojson }} + lastName,
+        {{ tr('replacements.script.line_first_name')|tojson }} + firstName,
+        {{ tr('replacements.script.line_email')|tojson }} + email,
+        {{ tr('replacements.script.line_phone')|tojson }} + phone,
+        {{ tr('replacements.script.line_position')|tojson }} + position,
+        "",
+        {{ tr('replacements.script.line_message_title')|tojson }},
+        message,
+      ].join("\n");
+
+      window.location.href =
+        "mailto:contact@svhmanagement.fr?subject=" +
+        encodeURIComponent(subject) +
+        "&body=" +
+        encodeURIComponent(body);
+    });
+  })();
+
+  (function () {
+    const toggleButton = document.getElementById("freelance-toggle");
+    const freelanceForm = document.getElementById("freelance-form");
+    if (!toggleButton || !freelanceForm) return;
+
+    toggleButton.addEventListener("click", function () {
+      freelanceForm.classList.toggle("is-hidden");
+      if (!freelanceForm.classList.contains("is-hidden")) {
+        freelanceForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  })();
+</script>
+{% endblock %}
