@@ -17,8 +17,19 @@
         <img src="{{ shared_logo }}" alt="{{ tr('brand.alt') }}">
         <span>S.V.H Management</span>
       </a>
-      <div class="top-nav-right">
-        <nav class="menu" aria-label="{{ tr('menu.main_aria') }}">
+      <button
+        class="menu-toggle"
+        type="button"
+        aria-label="{{ tr('menu.main_aria') }}"
+        aria-controls="site-nav-panel"
+        aria-expanded="false"
+      >
+        <span class="menu-toggle-bar"></span>
+        <span class="menu-toggle-bar"></span>
+        <span class="menu-toggle-bar"></span>
+      </button>
+      <div class="top-nav-right" id="site-nav-panel">
+        <nav class="menu" id="site-menu" aria-label="{{ tr('menu.main_aria') }}">
           {% for item in nav_items %}
             {% if item.children %}
               <div class="menu-item has-submenu {% if active_key == item.key %}active{% endif %}">
@@ -124,6 +135,65 @@
 
       textNode.parentNode.replaceChild(fragment, textNode);
     });
+  })();
+
+  (() => {
+    const topNav = document.querySelector(".top-nav");
+    const toggleButton = document.querySelector(".menu-toggle");
+    const navPanel = document.getElementById("site-nav-panel");
+    if (!topNav || !toggleButton || !navPanel) {
+      return;
+    }
+
+    const mobileQuery = window.matchMedia("(max-width: 900px)");
+
+    const closeMenu = () => {
+      topNav.classList.remove("is-open");
+      toggleButton.setAttribute("aria-expanded", "false");
+    };
+
+    const openMenu = () => {
+      topNav.classList.add("is-open");
+      toggleButton.setAttribute("aria-expanded", "true");
+    };
+
+    toggleButton.addEventListener("click", () => {
+      if (topNav.classList.contains("is-open")) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    });
+
+    navPanel.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => {
+        if (mobileQuery.matches) {
+          closeMenu();
+        }
+      });
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!mobileQuery.matches) {
+        return;
+      }
+      const target = event.target;
+      if (target instanceof Node && !topNav.contains(target)) {
+        closeMenu();
+      }
+    });
+
+    const onViewportChange = () => {
+      if (!mobileQuery.matches) {
+        closeMenu();
+      }
+    };
+
+    if (typeof mobileQuery.addEventListener === "function") {
+      mobileQuery.addEventListener("change", onViewportChange);
+    } else if (typeof mobileQuery.addListener === "function") {
+      mobileQuery.addListener(onViewportChange);
+    }
   })();
 </script>
 </body>
