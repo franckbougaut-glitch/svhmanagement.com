@@ -138,21 +138,21 @@ I18N: Dict[str, Dict[str, Any]] = {
             ],
             "triptych": [
                 {
-                    "before": "Le",
+                    "before": "Les ",
                     "letter": "S",
-                    "after": "comme Service",
+                    "after": "ervices",
                     "body": "Nous intervenons avec méthode, précision et exigence. Structurer, piloter, optimiser : chaque mission est menée avec une approche stratégique et opérationnelle, orientée résultats. Nous sécurisons la continuité d’exploitation et transformons la performance en avantage compétitif durable.",
                 },
                 {
-                    "before": "Le",
+                    "before": "Les ",
                     "letter": "V",
-                    "after": "comme Valeurs",
+                    "after": "aleurs",
                     "body": "Notre engagement repose sur l’intégrité, la transparence et la culture du résultat. Nous défendons un management responsable, exigeant et loyal, au service d’une performance saine et pérenne. La confiance est le socle de chaque collaboration.",
                 },
                 {
-                    "before": "Le",
+                    "before": "Les ",
                     "letter": "H",
-                    "after": "comme Humain",
+                    "after": "umains",
                     "body": "Parce qu’aucune stratégie ne réussit sans les équipes, nous plaçons l’humain au centre. Fédérer, accompagner, transmettre : nous développons les compétences et révélons les talents pour créer une dynamique collective forte et durable.",
                 },
             ],
