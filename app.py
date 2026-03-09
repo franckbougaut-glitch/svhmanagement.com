@@ -63,6 +63,7 @@ BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 HEROES_DIR = STATIC_DIR / "img" / "heroes"
 GALLERY_DIR = STATIC_DIR / "img" / "gallery"
+STYLE_CSS_FILE = STATIC_DIR / "style.css"
 DEFAULT_DATA_DIR = BASE_DIR / "data"
 _raw_data_dir = Path(os.environ.get("SVH_DATA_DIR", str(DEFAULT_DATA_DIR))).expanduser()
 DATA_DIR = (_raw_data_dir if _raw_data_dir.is_absolute() else (BASE_DIR / _raw_data_dir)).resolve()
@@ -107,6 +108,10 @@ RESEND_API_KEY = _env_first("RESEND_API_KEY", "RESEND_APIKEY", "RESEND_KEY")
 RESEND_API_URL = os.environ.get("RESEND_API_URL", "https://api.resend.com/emails").strip()
 RESEND_EMAIL_FROM = os.environ.get("RESEND_EMAIL_FROM", "").strip() or CONTACT_EMAIL_FROM
 RESEND_EMAIL_TO = os.environ.get("RESEND_EMAIL_TO", "").strip() or CONTACT_EMAIL_TO
+try:
+    STYLE_VERSION = str(int(STYLE_CSS_FILE.stat().st_mtime))
+except OSError:
+    STYLE_VERSION = datetime.utcnow().strftime("%Y%m%d%H%M%S")
 
 HEROES_DIR.mkdir(parents=True, exist_ok=True)
 GALLERY_DIR.mkdir(parents=True, exist_ok=True)
@@ -1957,6 +1962,7 @@ def inject_i18n_context() -> Dict[str, Any]:
         "tr": tr,
         "current_lang": g.lang,
         "language_options": language_options,
+        "style_version": STYLE_VERSION,
     }
 
 
