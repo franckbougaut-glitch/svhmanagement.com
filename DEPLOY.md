@@ -41,5 +41,17 @@ Variables déjà prévues dans `render.yaml`:
 - Ajoutez votre domaine puis configurez les DNS chez votre registrar.
 
 ## Note importante (formulaires email)
-Les formulaires de contact/remplacements utilisent `mailto:` côté navigateur (ouverture du client mail utilisateur).
-Si vous voulez un envoi direct serveur (SMTP/API) sans client mail, il faudra ajouter une brique d'envoi email backend.
+Les formulaires sont envoyés en backend (POST serveur) et enregistrés dans `SVH_DATA_DIR`.
+
+Pour recevoir un email de notification à chaque envoi, configurez aussi :
+- `SMTP_HOST`
+- `SMTP_PORT` (587 par défaut)
+- `SMTP_USERNAME`
+- `SMTP_PASSWORD`
+- `SMTP_USE_TLS` (`1` recommandé)
+- `SMTP_USE_SSL` (`0` si TLS activé)
+- `CONTACT_EMAIL_TO` (destinataire des notifications)
+- `CONTACT_EMAIL_FROM` (expéditeur affiché)
+
+Option :
+- `EMAIL_NOTIFICATIONS_REQUIRED=1` pour considérer l’envoi comme en échec si la notification email SMTP ne part pas.

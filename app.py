@@ -2,7 +2,9 @@ import csv
 import json
 import os
 import re
+import smtplib
 from datetime import datetime
+from email.message import EmailMessage
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
@@ -75,6 +77,20 @@ PHONE_PATTERN = re.compile(r"^[0-9+().\s-]{8,25}$")
 ISSUE_NUMBER_PATTERN = re.compile(r"N[°ºo]\s*(\d+)", re.IGNORECASE)
 DRIVE_FILE_ID_PATH_PATTERN = re.compile(r"/d/([A-Za-z0-9_-]{10,})")
 DRIVE_FILE_ID_QUERY_PATTERN = re.compile(r"[?&]id=([A-Za-z0-9_-]{10,})")
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT = max(1, _env_int("SMTP_PORT", 587))
+SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "").strip()
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").strip()
+SMTP_USE_TLS = _env_flag("SMTP_USE_TLS", True)
+SMTP_USE_SSL = _env_flag("SMTP_USE_SSL", False)
+SMTP_TIMEOUT_SEC = max(5, _env_int("SMTP_TIMEOUT_SEC", 20))
+EMAIL_NOTIFICATIONS_REQUIRED = _env_flag("EMAIL_NOTIFICATIONS_REQUIRED", False)
+CONTACT_EMAIL_TO = os.environ.get("CONTACT_EMAIL_TO", "contact@svhmanagement.fr").strip() or "contact@svhmanagement.fr"
+CONTACT_EMAIL_FROM = (
+    os.environ.get("CONTACT_EMAIL_FROM", "").strip()
+    or SMTP_USERNAME
+    or CONTACT_EMAIL_TO
+)
 
 HEROES_DIR.mkdir(parents=True, exist_ok=True)
 GALLERY_DIR.mkdir(parents=True, exist_ok=True)
@@ -290,6 +306,7 @@ I18N: Dict[str, Dict[str, Any]] = {
                 "invalid_email": "Adresse email invalide.",
                 "invalid_phone": "Numéro de téléphone invalide.",
                 "save_failed": "L'envoi a échoué. Veuillez réessayer.",
+                "email_failed": "Votre demande est enregistrée, mais l'email de notification a échoué. Merci de nous appeler au 07 67 31 47 55.",
             },
             "freelance_title": "Vous aussi, vous voulez rejoindre l'aventure S.V.H Management ?",
             "freelance_button": "Je suis Freelance",
@@ -302,6 +319,7 @@ I18N: Dict[str, Dict[str, Any]] = {
                 "cv_required": "Merci de joindre votre CV.",
                 "cv_extension": "Format CV non accepté. Utilisez PDF, DOC ou DOCX.",
                 "upload_failed": "Le dépôt du CV a échoué. Veuillez réessayer.",
+                "email_failed": "Votre candidature est enregistrée, mais l'email de notification a échoué. Merci de nous appeler au 07 67 31 47 55.",
             },
             "script": {
                 "subject_prefix": "Demande de remplacement - ",
@@ -363,6 +381,7 @@ I18N: Dict[str, Dict[str, Any]] = {
                 "required": "Tous les champs du formulaire sont obligatoires.",
                 "invalid_email": "Adresse email invalide.",
                 "save_failed": "L'envoi a échoué. Veuillez réessayer.",
+                "email_failed": "Votre message est enregistré, mais l'email de notification a échoué. Merci de nous appeler au 07 67 31 47 55.",
             },
             "script": {
                 "default_subject": "Demande de contact - SVH Management",
@@ -1563,6 +1582,42 @@ def _load_drive_resources() -> List[Dict[str, str]]:
     return resources
 
 
+def _email_notifications_enabled() -> bool:
+    return bool(SMTP_HOST and CONTACT_EMAIL_TO and CONTACT_EMAIL_FROM)
+
+
+def _send_email_notification(subject: str, body: str, *, reply_to: str = "") -> bool:
+    if not _email_notifications_enabled():
+        return False
+
+    message = EmailMessage()
+    message["Subject"] = subject.strip() or "Nouveau message site SVH Management"
+    message["From"] = CONTACT_EMAIL_FROM
+    message["To"] = CONTACT_EMAIL_TO
+    if reply_to and EMAIL_PATTERN.match(reply_to):
+        message["Reply-To"] = reply_to
+    message.set_content(body)
+
+    try:
+        if SMTP_USE_SSL:
+            smtp_client = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SEC)
+        else:
+            smtp_client = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SEC)
+
+        with smtp_client as server:
+            if not SMTP_USE_SSL and SMTP_USE_TLS:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+            if SMTP_USERNAME and SMTP_PASSWORD:
+                server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(message)
+        return True
+    except Exception:
+        app.logger.exception("Echec envoi email SMTP formulaire.")
+        return False
+
+
 def _save_premium_lead(first_name: str, last_name: str, email: str, phone: str) -> None:
     is_new_file = not PREMIUM_LEADS_FILE.exists()
     with PREMIUM_LEADS_FILE.open("a", encoding="utf-8", newline="") as csv_file:
@@ -1956,15 +2011,38 @@ def remplacements():
                 if not is_saved:
                     replacement_error = tr("replacements.request_errors.save_failed")
                 else:
-                    replacement_success = tr("replacements.request_success")
-                    replacement_form = {
-                        "first_name": "",
-                        "last_name": "",
-                        "email": "",
-                        "phone": "",
-                        "position": "",
-                        "message": "",
-                    }
+                    email_subject = f"[SVH] Demande de remplacement - {position}"
+                    email_body = "\n".join(
+                        [
+                            "Nouvelle demande de remplacement.",
+                            "",
+                            f"Nom : {last_name}",
+                            f"Prénom : {first_name}",
+                            f"Email : {email}",
+                            f"Téléphone : {phone}",
+                            f"Poste recherché : {position}",
+                            "",
+                            "Message :",
+                            message,
+                        ]
+                    )
+                    email_sent = _send_email_notification(
+                        email_subject,
+                        email_body,
+                        reply_to=email,
+                    )
+                    if _email_notifications_enabled() and not email_sent and EMAIL_NOTIFICATIONS_REQUIRED:
+                        replacement_error = tr("replacements.request_errors.email_failed")
+                    else:
+                        replacement_success = tr("replacements.request_success")
+                        replacement_form = {
+                            "first_name": "",
+                            "last_name": "",
+                            "email": "",
+                            "phone": "",
+                            "position": "",
+                            "message": "",
+                        }
 
         elif form_kind == "freelance":
             first_name = request.form.get("first_name", "").strip()
@@ -2008,16 +2086,40 @@ def remplacements():
                 if not is_saved:
                     freelance_error = tr("replacements.freelance_errors.upload_failed")
                 else:
-                    freelance_success = tr("replacements.freelance_success")
-                    freelance_open = False
-                    freelance_form = {
-                        "first_name": "",
-                        "last_name": "",
-                        "email": "",
-                        "phone": "",
-                        "geo_area": "",
-                        "available_job": "",
-                    }
+                    cv_filename = secure_filename(cv_file.filename or "").strip()
+                    email_subject = f"[SVH] Nouvelle candidature freelance - {last_name} {first_name}".strip()
+                    email_body = "\n".join(
+                        [
+                            "Nouvelle candidature freelance reçue.",
+                            "",
+                            f"Nom : {last_name}",
+                            f"Prénom : {first_name}",
+                            f"Email : {email}",
+                            f"Téléphone : {phone}",
+                            f"Zone géographique : {geo_area}",
+                            f"Métier disponible : {available_job}",
+                            f"CV transmis : {cv_filename}",
+                        ]
+                    )
+                    email_sent = _send_email_notification(
+                        email_subject,
+                        email_body,
+                        reply_to=email,
+                    )
+                    if _email_notifications_enabled() and not email_sent and EMAIL_NOTIFICATIONS_REQUIRED:
+                        freelance_error = tr("replacements.freelance_errors.email_failed")
+                        freelance_open = True
+                    else:
+                        freelance_success = tr("replacements.freelance_success")
+                        freelance_open = False
+                        freelance_form = {
+                            "first_name": "",
+                            "last_name": "",
+                            "email": "",
+                            "phone": "",
+                            "geo_area": "",
+                            "available_job": "",
+                        }
 
     return render_site_page(
         "remplacements.html",
@@ -2140,13 +2242,34 @@ def contact_infos():
                 if not is_saved:
                     contact_error = tr("contact.errors.save_failed")
                 else:
-                    contact_success = tr("contact.form_success")
-                    contact_form = {
-                        "name": "",
-                        "email": "",
-                        "subject": "",
-                        "message": "",
-                    }
+                    email_subject = f"[SVH] Contact - {subject}"
+                    email_body = "\n".join(
+                        [
+                            "Nouveau message depuis le formulaire Contact.",
+                            "",
+                            f"Nom : {name}",
+                            f"Email : {email}",
+                            f"Objet : {subject}",
+                            "",
+                            "Message :",
+                            message,
+                        ]
+                    )
+                    email_sent = _send_email_notification(
+                        email_subject,
+                        email_body,
+                        reply_to=email,
+                    )
+                    if _email_notifications_enabled() and not email_sent and EMAIL_NOTIFICATIONS_REQUIRED:
+                        contact_error = tr("contact.errors.email_failed")
+                    else:
+                        contact_success = tr("contact.form_success")
+                        contact_form = {
+                            "name": "",
+                            "email": "",
+                            "subject": "",
+                            "message": "",
+                        }
 
     return render_site_page(
         "contact.html",
