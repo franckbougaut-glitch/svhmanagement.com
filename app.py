@@ -1619,13 +1619,17 @@ def _send_email_notification(
     reply_to: str = "",
     attachment_path: Optional[Path] = None,
     attachment_name: str = "",
+    to_email: str = "",
+    from_email: str = "",
 ) -> bool:
     normalized_subject = subject.strip() or "Nouveau message site SVH Management"
+    resend_to = to_email.strip() or RESEND_EMAIL_TO
+    smtp_to = to_email.strip() or CONTACT_EMAIL_TO
 
-    if RESEND_API_KEY and RESEND_EMAIL_FROM and RESEND_EMAIL_TO:
+    if RESEND_API_KEY and RESEND_EMAIL_FROM and resend_to:
         payload: Dict[str, Any] = {
-            "from": RESEND_EMAIL_FROM,
-            "to": [RESEND_EMAIL_TO],
+            "from": from_email.strip() or RESEND_EMAIL_FROM,
+            "to": [resend_to],
             "subject": normalized_subject,
             "text": body,
         }
@@ -1677,13 +1681,13 @@ def _send_email_notification(
             app.logger.exception("Echec envoi email Resend formulaire.")
             return False
 
-    if not (SMTP_HOST and CONTACT_EMAIL_TO and CONTACT_EMAIL_FROM):
+    if not (SMTP_HOST and smtp_to and CONTACT_EMAIL_FROM):
         return False
 
     message = EmailMessage()
     message["Subject"] = normalized_subject
-    message["From"] = CONTACT_EMAIL_FROM
-    message["To"] = CONTACT_EMAIL_TO
+    message["From"] = from_email.strip() or CONTACT_EMAIL_FROM
+    message["To"] = smtp_to
     if reply_to and EMAIL_PATTERN.match(reply_to):
         message["Reply-To"] = reply_to
     message.set_content(body)
@@ -2238,6 +2242,32 @@ def remplacements():
                         freelance_error = tr("replacements.freelance_errors.email_failed")
                         freelance_open = True
                     else:
+                        candidate_subject = "[SVH] Candidature bien reçue"
+                        candidate_body = "\n".join(
+                            [
+                                f"Bonjour {first_name},",
+                                "",
+                                "Nous avons bien reçu votre candidature freelance chez S.V.H Management.",
+                                "Merci pour votre confiance.",
+                                "",
+                                "Nous reviendrons vers vous dès qu'une mission adaptée à votre profil sera disponible.",
+                                "",
+                                "Cordialement,",
+                                "S.V.H Management",
+                                "contact@svhmanagement.fr",
+                                "07 67 31 47 55",
+                            ]
+                        )
+                        candidate_email_sent = _send_email_notification(
+                            candidate_subject,
+                            candidate_body,
+                            to_email=email,
+                        )
+                        if not candidate_email_sent:
+                            app.logger.warning(
+                                "Echec envoi accuse reception candidature freelance. email=%s",
+                                email,
+                            )
                         freelance_success = tr("replacements.freelance_success")
                         freelance_open = False
                         freelance_form = {
