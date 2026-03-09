@@ -33,15 +33,9 @@
             <img
               class="svh-triptych-image"
               src="{{ url_for('static', filename=image_filename) }}"
-              alt="{{ item.after }}"
+              alt="{{ (((item.before ~ ' ') if item.before else '') ~ item.letter ~ item.after)|trim }}"
             >
-            <h3 class="svh-triptych-title">
-              {% if item.before %}
-                <span class="svh-triptych-text">{{ item.before }}</span>
-              {% endif %}
-              <span class="svh-triptych-letter">{{ item.letter }}</span>
-              <span class="svh-triptych-text">{{ item.after }}</span>
-            </h3>
+            <h3 class="svh-triptych-title">{% if item.before %}<span class="svh-triptych-text">{{ item.before }}</span> {% endif %}<span class="svh-triptych-letter">{{ item.letter }}</span><span class="svh-triptych-text">{{ item.after }}</span></h3>
             {% if item.body %}
               <p class="svh-triptych-body">{{ item.body }}</p>
             {% endif %}
