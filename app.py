@@ -1625,6 +1625,7 @@ def _send_email_notification(
     normalized_subject = subject.strip() or "Nouveau message site SVH Management"
     resend_to = to_email.strip() or RESEND_EMAIL_TO
     smtp_to = to_email.strip() or CONTACT_EMAIL_TO
+    effective_from = from_email.strip() or CONTACT_EMAIL_FROM
 
     if RESEND_API_KEY and RESEND_EMAIL_FROM and resend_to:
         payload: Dict[str, Any] = {
@@ -1672,13 +1673,21 @@ def _send_email_notification(
             except Exception:
                 response_body = ""
             app.logger.error(
-                "Echec envoi email Resend formulaire. status=%s body=%s",
+                "Echec envoi email Resend formulaire. to=%s from=%s subject=%s status=%s body=%s",
+                resend_to,
+                payload.get("from", ""),
+                normalized_subject,
                 exc.code,
                 response_body[:1200],
             )
             return False
         except Exception:
-            app.logger.exception("Echec envoi email Resend formulaire.")
+            app.logger.exception(
+                "Echec envoi email Resend formulaire. to=%s from=%s subject=%s",
+                resend_to,
+                payload.get("from", ""),
+                normalized_subject,
+            )
             return False
 
     if not (SMTP_HOST and smtp_to and CONTACT_EMAIL_FROM):
@@ -1686,7 +1695,7 @@ def _send_email_notification(
 
     message = EmailMessage()
     message["Subject"] = normalized_subject
-    message["From"] = from_email.strip() or CONTACT_EMAIL_FROM
+    message["From"] = effective_from
     message["To"] = smtp_to
     if reply_to and EMAIL_PATTERN.match(reply_to):
         message["Reply-To"] = reply_to
@@ -1728,7 +1737,12 @@ def _send_email_notification(
             server.send_message(message)
         return True
     except Exception:
-        app.logger.exception("Echec envoi email SMTP formulaire.")
+        app.logger.exception(
+            "Echec envoi email SMTP formulaire. to=%s from=%s subject=%s",
+            smtp_to,
+            effective_from,
+            normalized_subject,
+        )
         return False
 
 
@@ -2262,6 +2276,8 @@ def remplacements():
                             candidate_subject,
                             candidate_body,
                             to_email=email,
+                            from_email=(SMTP_USERNAME or CONTACT_EMAIL_FROM),
+                            reply_to=CONTACT_EMAIL_TO,
                         )
                         if not candidate_email_sent:
                             app.logger.warning(
