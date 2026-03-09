@@ -7,6 +7,8 @@ from datetime import datetime
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 from uuid import uuid4
 
 from flask import Flask, g, redirect, render_template, request, session, url_for
@@ -91,6 +93,10 @@ CONTACT_EMAIL_FROM = (
     or SMTP_USERNAME
     or CONTACT_EMAIL_TO
 )
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
+RESEND_API_URL = os.environ.get("RESEND_API_URL", "https://api.resend.com/emails").strip()
+RESEND_EMAIL_FROM = os.environ.get("RESEND_EMAIL_FROM", "").strip() or CONTACT_EMAIL_FROM
+RESEND_EMAIL_TO = os.environ.get("RESEND_EMAIL_TO", "").strip() or CONTACT_EMAIL_TO
 
 HEROES_DIR.mkdir(parents=True, exist_ok=True)
 GALLERY_DIR.mkdir(parents=True, exist_ok=True)
@@ -1583,15 +1589,59 @@ def _load_drive_resources() -> List[Dict[str, str]]:
 
 
 def _email_notifications_enabled() -> bool:
+    if RESEND_API_KEY and RESEND_EMAIL_FROM and RESEND_EMAIL_TO:
+        return True
     return bool(SMTP_HOST and CONTACT_EMAIL_TO and CONTACT_EMAIL_FROM)
 
 
 def _send_email_notification(subject: str, body: str, *, reply_to: str = "") -> bool:
-    if not _email_notifications_enabled():
+    normalized_subject = subject.strip() or "Nouveau message site SVH Management"
+
+    if RESEND_API_KEY and RESEND_EMAIL_FROM and RESEND_EMAIL_TO:
+        payload: Dict[str, Any] = {
+            "from": RESEND_EMAIL_FROM,
+            "to": [RESEND_EMAIL_TO],
+            "subject": normalized_subject,
+            "text": body,
+        }
+        if reply_to and EMAIL_PATTERN.match(reply_to):
+            payload["reply_to"] = reply_to
+
+        request_data = json.dumps(payload).encode("utf-8")
+        request_headers = {
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        }
+        http_request = urllib_request.Request(
+            RESEND_API_URL,
+            data=request_data,
+            headers=request_headers,
+            method="POST",
+        )
+
+        try:
+            with urllib_request.urlopen(http_request, timeout=SMTP_TIMEOUT_SEC) as response:
+                return 200 <= int(getattr(response, "status", 0)) < 300
+        except urllib_error.HTTPError as exc:
+            try:
+                response_body = exc.read().decode("utf-8", errors="replace")
+            except Exception:
+                response_body = ""
+            app.logger.error(
+                "Echec envoi email Resend formulaire. status=%s body=%s",
+                exc.code,
+                response_body[:1200],
+            )
+            return False
+        except Exception:
+            app.logger.exception("Echec envoi email Resend formulaire.")
+            return False
+
+    if not (SMTP_HOST and CONTACT_EMAIL_TO and CONTACT_EMAIL_FROM):
         return False
 
     message = EmailMessage()
-    message["Subject"] = subject.strip() or "Nouveau message site SVH Management"
+    message["Subject"] = normalized_subject
     message["From"] = CONTACT_EMAIL_FROM
     message["To"] = CONTACT_EMAIL_TO
     if reply_to and EMAIL_PATTERN.match(reply_to):

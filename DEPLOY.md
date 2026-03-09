@@ -43,7 +43,17 @@ Variables déjà prévues dans `render.yaml`:
 ## Note importante (formulaires email)
 Les formulaires sont envoyés en backend (POST serveur) et enregistrés dans `SVH_DATA_DIR`.
 
-Pour recevoir un email de notification à chaque envoi, configurez aussi :
+### Option recommandée : Resend (API HTTPS)
+Sur Render, cette option est généralement plus fiable que SMTP.
+
+Variables :
+- `RESEND_API_KEY`
+- `RESEND_EMAIL_FROM` (ex: `SVH Management <onboarding@resend.dev>` ou domaine vérifié)
+- `RESEND_EMAIL_TO` (destinataire des notifications)
+- `EMAIL_NOTIFICATIONS_REQUIRED=1`
+
+### Option alternative : SMTP
+Si vous préférez SMTP, configurez :
 - `SMTP_HOST`
 - `SMTP_PORT` (587 par défaut)
 - `SMTP_USERNAME`
