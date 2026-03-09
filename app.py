@@ -1,8 +1,10 @@
 import csv
 import json
+import mimetypes
 import os
 import re
 import smtplib
+from base64 import b64encode
 from datetime import datetime
 from email.message import EmailMessage
 from pathlib import Path
@@ -1610,7 +1612,14 @@ def _email_transport_mode() -> str:
     return "none"
 
 
-def _send_email_notification(subject: str, body: str, *, reply_to: str = "") -> bool:
+def _send_email_notification(
+    subject: str,
+    body: str,
+    *,
+    reply_to: str = "",
+    attachment_path: Optional[Path] = None,
+    attachment_name: str = "",
+) -> bool:
     normalized_subject = subject.strip() or "Nouveau message site SVH Management"
 
     if RESEND_API_KEY and RESEND_EMAIL_FROM and RESEND_EMAIL_TO:
@@ -1622,6 +1631,21 @@ def _send_email_notification(subject: str, body: str, *, reply_to: str = "") -> 
         }
         if reply_to and EMAIL_PATTERN.match(reply_to):
             payload["reply_to"] = reply_to
+        if attachment_path:
+            try:
+                encoded_attachment = b64encode(attachment_path.read_bytes()).decode("ascii")
+                payload["attachments"] = [
+                    {
+                        "filename": attachment_name.strip() or attachment_path.name,
+                        "content": encoded_attachment,
+                    }
+                ]
+            except OSError:
+                app.logger.exception(
+                    "Echec lecture pièce jointe pour email Resend. fichier=%s",
+                    attachment_path,
+                )
+                return False
 
         request_data = json.dumps(payload).encode("utf-8")
         request_headers = {
@@ -1663,6 +1687,26 @@ def _send_email_notification(subject: str, body: str, *, reply_to: str = "") -> 
     if reply_to and EMAIL_PATTERN.match(reply_to):
         message["Reply-To"] = reply_to
     message.set_content(body)
+    if attachment_path:
+        try:
+            attachment_data = attachment_path.read_bytes()
+            attachment_mime, _ = mimetypes.guess_type(attachment_name or attachment_path.name)
+            if attachment_mime and "/" in attachment_mime:
+                main_type, sub_type = attachment_mime.split("/", 1)
+            else:
+                main_type, sub_type = "application", "octet-stream"
+            message.add_attachment(
+                attachment_data,
+                maintype=main_type,
+                subtype=sub_type,
+                filename=attachment_name.strip() or attachment_path.name,
+            )
+        except OSError:
+            app.logger.exception(
+                "Echec lecture pièce jointe pour email SMTP. fichier=%s",
+                attachment_path,
+            )
+            return False
 
     try:
         if SMTP_USE_SSL:
@@ -1775,10 +1819,10 @@ def _save_freelance_application(
     geo_area: str,
     available_job: str,
     cv_file: Any,
-) -> bool:
+) -> Optional[Dict[str, str]]:
     original_filename = secure_filename(cv_file.filename or "").strip()
     if not original_filename or not _is_allowed_cv_filename(original_filename):
-        return False
+        return None
 
     extension = Path(original_filename).suffix.lower()
     candidate_slug = secure_filename(f"{last_name}-{first_name}") or "candidat"
@@ -1791,7 +1835,7 @@ def _save_freelance_application(
     try:
         cv_file.save(target_path)
     except OSError:
-        return False
+        return None
 
     is_new_file = not FREELANCE_APPLICATIONS_FILE.exists()
     try:
@@ -1829,9 +1873,13 @@ def _save_freelance_application(
             target_path.unlink(missing_ok=True)
         except OSError:
             pass
-        return False
+        return None
 
-    return True
+    return {
+        "original_filename": original_filename,
+        "stored_filename": stored_filename,
+        "stored_path": str(target_path),
+    }
 
 
 def _deep_get(dictionary: Dict[str, Any], key_path: str) -> Any:
@@ -2145,7 +2193,7 @@ def remplacements():
             elif not _is_allowed_cv_filename(secure_filename(cv_file.filename)):
                 freelance_error = tr("replacements.freelance_errors.cv_extension")
             else:
-                is_saved = _save_freelance_application(
+                saved_application = _save_freelance_application(
                     first_name=first_name,
                     last_name=last_name,
                     email=email,
@@ -2154,10 +2202,12 @@ def remplacements():
                     available_job=available_job,
                     cv_file=cv_file,
                 )
-                if not is_saved:
+                if not saved_application:
                     freelance_error = tr("replacements.freelance_errors.upload_failed")
                 else:
-                    cv_filename = secure_filename(cv_file.filename or "").strip()
+                    cv_filename = saved_application.get("original_filename", "").strip()
+                    cv_stored_path_raw = saved_application.get("stored_path", "").strip()
+                    cv_stored_path = Path(cv_stored_path_raw) if cv_stored_path_raw else None
                     email_subject = f"[SVH] Nouvelle candidature freelance - {last_name} {first_name}".strip()
                     email_body = "\n".join(
                         [
@@ -2170,12 +2220,19 @@ def remplacements():
                             f"Zone géographique : {geo_area}",
                             f"Métier disponible : {available_job}",
                             f"CV transmis : {cv_filename}",
+                            "Pièce jointe : oui",
                         ]
                     )
                     email_sent = _send_email_notification(
                         email_subject,
                         email_body,
                         reply_to=email,
+                        attachment_path=(
+                            cv_stored_path
+                            if (cv_stored_path and cv_stored_path.is_file())
+                            else None
+                        ),
+                        attachment_name=cv_filename,
                     )
                     if _email_notifications_enabled() and not email_sent and EMAIL_NOTIFICATIONS_REQUIRED:
                         freelance_error = tr("replacements.freelance_errors.email_failed")
