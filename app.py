@@ -66,6 +66,8 @@ DRIVE_RESOURCES_FILE = (
 PREMIUM_LEADS_FILE = DATA_DIR / "premium_leads.csv"
 FREELANCE_APPLICATIONS_FILE = DATA_DIR / "freelance_applications.csv"
 FREELANCE_CV_DIR = DATA_DIR / "freelance_cvs"
+CONTACT_REQUESTS_FILE = DATA_DIR / "contact_requests.csv"
+REPLACEMENT_REQUESTS_FILE = DATA_DIR / "replacement_requests.csv"
 SUPPORTED_IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 ALLOWED_CV_EXTENSIONS = {".pdf", ".doc", ".docx"}
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -282,6 +284,13 @@ I18N: Dict[str, Dict[str, Any]] = {
                 "Chaque intervenant arrive avec une expérience terrain solide et devient opérationnel dès son arrivée sur site.",
             ],
             "form_title": "J'ai un besoin de remplacement.",
+            "request_success": "Votre demande de remplacement a bien été envoyée. Merci !",
+            "request_errors": {
+                "required": "Tous les champs sont obligatoires.",
+                "invalid_email": "Adresse email invalide.",
+                "invalid_phone": "Numéro de téléphone invalide.",
+                "save_failed": "L'envoi a échoué. Veuillez réessayer.",
+            },
             "freelance_title": "Vous aussi, vous voulez rejoindre l'aventure S.V.H Management ?",
             "freelance_button": "Je suis Freelance",
             "freelance_intro": "Déposez votre CV pour nous proposer votre candidature et rejoindre de futures missions au sein de S.V.H Management.",
@@ -349,6 +358,12 @@ I18N: Dict[str, Dict[str, Any]] = {
             "google_reviews_cta": "Laisser un avis Google",
             "google_reviews_aria": "Donner un avis Google à S.V.H Management",
             "form_title": "Formulaire de contact",
+            "form_success": "Votre message a bien été envoyé. Merci !",
+            "errors": {
+                "required": "Tous les champs du formulaire sont obligatoires.",
+                "invalid_email": "Adresse email invalide.",
+                "save_failed": "L'envoi a échoué. Veuillez réessayer.",
+            },
             "script": {
                 "default_subject": "Demande de contact - SVH Management",
                 "line_name": "Nom : ",
@@ -1565,6 +1580,67 @@ def _save_premium_lead(first_name: str, last_name: str, email: str, phone: str) 
         )
 
 
+def _save_contact_request(name: str, email: str, subject: str, message: str) -> bool:
+    is_new_file = not CONTACT_REQUESTS_FILE.exists()
+    try:
+        with CONTACT_REQUESTS_FILE.open("a", encoding="utf-8", newline="") as csv_file:
+            writer = csv.writer(csv_file)
+            if is_new_file:
+                writer.writerow(["timestamp", "name", "email", "subject", "message"])
+            writer.writerow(
+                [
+                    datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    name,
+                    email,
+                    subject,
+                    message,
+                ]
+            )
+    except OSError:
+        return False
+    return True
+
+
+def _save_replacement_request(
+    first_name: str,
+    last_name: str,
+    email: str,
+    phone: str,
+    position: str,
+    message: str,
+) -> bool:
+    is_new_file = not REPLACEMENT_REQUESTS_FILE.exists()
+    try:
+        with REPLACEMENT_REQUESTS_FILE.open("a", encoding="utf-8", newline="") as csv_file:
+            writer = csv.writer(csv_file)
+            if is_new_file:
+                writer.writerow(
+                    [
+                        "timestamp",
+                        "first_name",
+                        "last_name",
+                        "email",
+                        "phone",
+                        "position",
+                        "message",
+                    ]
+                )
+            writer.writerow(
+                [
+                    datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    first_name,
+                    last_name,
+                    email,
+                    phone,
+                    position,
+                    message,
+                ]
+            )
+    except OSError:
+        return False
+    return True
+
+
 def _is_allowed_cv_filename(filename: str) -> bool:
     extension = Path(filename).suffix.lower()
     return extension in ALLOWED_CV_EXTENSIONS
@@ -1820,6 +1896,16 @@ def formations_programmes():
 
 @app.route("/remplacements", methods=["GET", "POST"])
 def remplacements():
+    replacement_error = ""
+    replacement_success = ""
+    replacement_form = {
+        "first_name": "",
+        "last_name": "",
+        "email": "",
+        "phone": "",
+        "position": "",
+        "message": "",
+    }
     freelance_error = ""
     freelance_success = ""
     freelance_open = False
@@ -1832,58 +1918,106 @@ def remplacements():
         "available_job": "",
     }
 
-    if request.method == "POST" and request.form.get("form_kind") == "freelance":
-        first_name = request.form.get("first_name", "").strip()
-        last_name = request.form.get("last_name", "").strip()
-        email = request.form.get("email", "").strip()
-        phone = request.form.get("phone", "").strip()
-        geo_area = request.form.get("geo_area", "").strip()
-        available_job = request.form.get("available_job", "").strip()
-        cv_file = request.files.get("cv_file")
+    if request.method == "POST":
+        form_kind = request.form.get("form_kind", "").strip()
 
-        freelance_form = {
-            "first_name": first_name,
-            "last_name": last_name,
-            "email": email,
-            "phone": phone,
-            "geo_area": geo_area,
-            "available_job": available_job,
-        }
-        freelance_open = True
+        if form_kind == "replacement_request":
+            first_name = request.form.get("first_name", "").strip()
+            last_name = request.form.get("last_name", "").strip()
+            email = request.form.get("email", "").strip()
+            phone = request.form.get("phone", "").strip()
+            position = request.form.get("position", "").strip()
+            message = request.form.get("message", "").strip()
 
-        if not all([first_name, last_name, email, phone, geo_area, available_job]):
-            freelance_error = tr("replacements.freelance_errors.required")
-        elif not EMAIL_PATTERN.match(email):
-            freelance_error = tr("replacements.freelance_errors.invalid_email")
-        elif not PHONE_PATTERN.match(phone):
-            freelance_error = tr("replacements.freelance_errors.invalid_phone")
-        elif cv_file is None or not (cv_file.filename or "").strip():
-            freelance_error = tr("replacements.freelance_errors.cv_required")
-        elif not _is_allowed_cv_filename(secure_filename(cv_file.filename)):
-            freelance_error = tr("replacements.freelance_errors.cv_extension")
-        else:
-            is_saved = _save_freelance_application(
-                first_name=first_name,
-                last_name=last_name,
-                email=email,
-                phone=phone,
-                geo_area=geo_area,
-                available_job=available_job,
-                cv_file=cv_file,
-            )
-            if not is_saved:
-                freelance_error = tr("replacements.freelance_errors.upload_failed")
+            replacement_form = {
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": email,
+                "phone": phone,
+                "position": position,
+                "message": message,
+            }
+
+            if not all([first_name, last_name, email, phone, position, message]):
+                replacement_error = tr("replacements.request_errors.required")
+            elif not EMAIL_PATTERN.match(email):
+                replacement_error = tr("replacements.request_errors.invalid_email")
+            elif not PHONE_PATTERN.match(phone):
+                replacement_error = tr("replacements.request_errors.invalid_phone")
             else:
-                freelance_success = tr("replacements.freelance_success")
-                freelance_open = False
-                freelance_form = {
-                    "first_name": "",
-                    "last_name": "",
-                    "email": "",
-                    "phone": "",
-                    "geo_area": "",
-                    "available_job": "",
-                }
+                is_saved = _save_replacement_request(
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email,
+                    phone=phone,
+                    position=position,
+                    message=message,
+                )
+                if not is_saved:
+                    replacement_error = tr("replacements.request_errors.save_failed")
+                else:
+                    replacement_success = tr("replacements.request_success")
+                    replacement_form = {
+                        "first_name": "",
+                        "last_name": "",
+                        "email": "",
+                        "phone": "",
+                        "position": "",
+                        "message": "",
+                    }
+
+        elif form_kind == "freelance":
+            first_name = request.form.get("first_name", "").strip()
+            last_name = request.form.get("last_name", "").strip()
+            email = request.form.get("email", "").strip()
+            phone = request.form.get("phone", "").strip()
+            geo_area = request.form.get("geo_area", "").strip()
+            available_job = request.form.get("available_job", "").strip()
+            cv_file = request.files.get("cv_file")
+
+            freelance_form = {
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": email,
+                "phone": phone,
+                "geo_area": geo_area,
+                "available_job": available_job,
+            }
+            freelance_open = True
+
+            if not all([first_name, last_name, email, phone, geo_area, available_job]):
+                freelance_error = tr("replacements.freelance_errors.required")
+            elif not EMAIL_PATTERN.match(email):
+                freelance_error = tr("replacements.freelance_errors.invalid_email")
+            elif not PHONE_PATTERN.match(phone):
+                freelance_error = tr("replacements.freelance_errors.invalid_phone")
+            elif cv_file is None or not (cv_file.filename or "").strip():
+                freelance_error = tr("replacements.freelance_errors.cv_required")
+            elif not _is_allowed_cv_filename(secure_filename(cv_file.filename)):
+                freelance_error = tr("replacements.freelance_errors.cv_extension")
+            else:
+                is_saved = _save_freelance_application(
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email,
+                    phone=phone,
+                    geo_area=geo_area,
+                    available_job=available_job,
+                    cv_file=cv_file,
+                )
+                if not is_saved:
+                    freelance_error = tr("replacements.freelance_errors.upload_failed")
+                else:
+                    freelance_success = tr("replacements.freelance_success")
+                    freelance_open = False
+                    freelance_form = {
+                        "first_name": "",
+                        "last_name": "",
+                        "email": "",
+                        "phone": "",
+                        "geo_area": "",
+                        "available_job": "",
+                    }
 
     return render_site_page(
         "remplacements.html",
@@ -1892,6 +2026,9 @@ def remplacements():
         hero_title=tr("pages.replacements"),
         hero_image=_hero_image("remplacements"),
         extra_context={
+            "replacement_error": replacement_error,
+            "replacement_success": replacement_success,
+            "replacement_form": replacement_form,
             "freelance_error": freelance_error,
             "freelance_success": freelance_success,
             "freelance_open": freelance_open,
@@ -1964,14 +2101,64 @@ def ressources():
     )
 
 
-@app.route("/contact-et-infos")
+@app.route("/contact-et-infos", methods=["GET", "POST"])
 def contact_infos():
+    contact_error = ""
+    contact_success = ""
+    contact_form = {
+        "name": "",
+        "email": "",
+        "subject": "",
+        "message": "",
+    }
+
+    if request.method == "POST":
+        form_kind = request.form.get("form_kind", "").strip()
+        if form_kind == "contact_request":
+            name = request.form.get("name", "").strip()
+            email = request.form.get("email", "").strip()
+            subject = request.form.get("subject", "").strip()
+            message = request.form.get("message", "").strip()
+            contact_form = {
+                "name": name,
+                "email": email,
+                "subject": subject,
+                "message": message,
+            }
+
+            if not all([name, email, subject, message]):
+                contact_error = tr("contact.errors.required")
+            elif not EMAIL_PATTERN.match(email):
+                contact_error = tr("contact.errors.invalid_email")
+            else:
+                is_saved = _save_contact_request(
+                    name=name,
+                    email=email,
+                    subject=subject,
+                    message=message,
+                )
+                if not is_saved:
+                    contact_error = tr("contact.errors.save_failed")
+                else:
+                    contact_success = tr("contact.form_success")
+                    contact_form = {
+                        "name": "",
+                        "email": "",
+                        "subject": "",
+                        "message": "",
+                    }
+
     return render_site_page(
         "contact.html",
         page_title=_page_title("pages.contact"),
         active_key="contact",
         hero_title=tr("pages.contact"),
         hero_image=_hero_image("contact"),
+        extra_context={
+            "contact_error": contact_error,
+            "contact_success": contact_success,
+            "contact_form": contact_form,
+        },
     )
 
 

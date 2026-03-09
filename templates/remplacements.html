@@ -16,42 +16,56 @@
 
   <h3 class="replacement-form-title">{{ tr('replacements.form_title') }}</h3>
 
-  <form id="replacement-form" class="contact-form replacement-form" action="mailto:contact@svhmanagement.fr" method="get">
+  <form
+    id="replacement-form"
+    class="contact-form replacement-form"
+    action="{{ url_for('remplacements') }}"
+    method="post"
+  >
+    <input type="hidden" name="form_kind" value="replacement_request">
+
+    {% if replacement_error %}
+      <p class="premium-error">{{ replacement_error }}</p>
+    {% endif %}
+    {% if replacement_success %}
+      <p class="freelance-success">{{ replacement_success }}</p>
+    {% endif %}
+
     <div class="contact-grid">
       <label>
         {{ tr('forms.last_name') }}
-        <input id="replacement-last-name" name="last_name" type="text" required>
+        <input id="replacement-last-name" name="last_name" type="text" value="{{ replacement_form.last_name }}" required>
       </label>
 
       <label>
         {{ tr('forms.first_name') }}
-        <input id="replacement-first-name" name="first_name" type="text" required>
+        <input id="replacement-first-name" name="first_name" type="text" value="{{ replacement_form.first_name }}" required>
       </label>
 
       <label>
         {{ tr('forms.mail') }}
-        <input id="replacement-email" name="email" type="email" required>
+        <input id="replacement-email" name="email" type="email" value="{{ replacement_form.email }}" required>
       </label>
 
       <label>
         {{ tr('forms.phone') }}
-        <input id="replacement-phone" name="phone" type="tel" required>
+        <input id="replacement-phone" name="phone" type="tel" value="{{ replacement_form.phone }}" required>
       </label>
     </div>
 
     <label>
       {{ tr('forms.position_label') }}
       <select id="replacement-position" name="position" required>
-        <option value="" selected disabled>{{ tr('forms.position_placeholder') }}</option>
-        <option value="{{ tr('forms.position_direction') }}">{{ tr('forms.position_direction') }}</option>
-        <option value="{{ tr('forms.position_receptionist') }}">{{ tr('forms.position_receptionist') }}</option>
-        <option value="{{ tr('forms.position_other') }}">{{ tr('forms.position_other') }}</option>
+        <option value="" disabled {% if not replacement_form.position %}selected{% endif %}>{{ tr('forms.position_placeholder') }}</option>
+        <option value="{{ tr('forms.position_direction') }}" {% if replacement_form.position == tr('forms.position_direction') %}selected{% endif %}>{{ tr('forms.position_direction') }}</option>
+        <option value="{{ tr('forms.position_receptionist') }}" {% if replacement_form.position == tr('forms.position_receptionist') %}selected{% endif %}>{{ tr('forms.position_receptionist') }}</option>
+        <option value="{{ tr('forms.position_other') }}" {% if replacement_form.position == tr('forms.position_other') %}selected{% endif %}>{{ tr('forms.position_other') }}</option>
       </select>
     </label>
 
     <label>
       {{ tr('forms.text_area') }}
-      <textarea id="replacement-message" name="message" rows="6" required></textarea>
+      <textarea id="replacement-message" name="message" rows="6" required>{{ replacement_form.message }}</textarea>
     </label>
 
     <button type="submit" class="button">{{ tr('forms.send_request') }}</button>
@@ -132,42 +146,6 @@
 </section>
 
 <script>
-  (function () {
-    const form = document.getElementById("replacement-form");
-    if (!form) return;
-
-    form.addEventListener("submit", function (event) {
-      event.preventDefault();
-
-      const lastName = document.getElementById("replacement-last-name").value.trim();
-      const firstName = document.getElementById("replacement-first-name").value.trim();
-      const email = document.getElementById("replacement-email").value.trim();
-      const phone = document.getElementById("replacement-phone").value.trim();
-      const position = document.getElementById("replacement-position").value.trim();
-      const message = document.getElementById("replacement-message").value.trim();
-
-      const subjectPrefix = {{ tr('replacements.script.subject_prefix')|tojson }};
-      const subjectFallback = {{ tr('replacements.script.subject_fallback')|tojson }};
-      const subject = subjectPrefix + (position || subjectFallback);
-      const body = [
-        {{ tr('replacements.script.line_last_name')|tojson }} + lastName,
-        {{ tr('replacements.script.line_first_name')|tojson }} + firstName,
-        {{ tr('replacements.script.line_email')|tojson }} + email,
-        {{ tr('replacements.script.line_phone')|tojson }} + phone,
-        {{ tr('replacements.script.line_position')|tojson }} + position,
-        "",
-        {{ tr('replacements.script.line_message_title')|tojson }},
-        message,
-      ].join("\n");
-
-      window.location.href =
-        "mailto:contact@svhmanagement.fr?subject=" +
-        encodeURIComponent(subject) +
-        "&body=" +
-        encodeURIComponent(body);
-    });
-  })();
-
   (function () {
     const toggleButton = document.getElementById("freelance-toggle");
     const freelanceForm = document.getElementById("freelance-form");

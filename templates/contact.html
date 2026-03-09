@@ -99,64 +99,40 @@
     </div>
   </div>
 
-  <form id="contact-form" class="contact-form" action="mailto:contact@svhmanagement.fr" method="get">
+  <form id="contact-form" class="contact-form" action="{{ url_for('contact_infos') }}" method="post">
     <h2>{{ tr('contact.form_title') }}</h2>
+    <input type="hidden" name="form_kind" value="contact_request">
+
+    {% if contact_error %}
+      <p class="premium-error">{{ contact_error }}</p>
+    {% endif %}
+    {% if contact_success %}
+      <p class="freelance-success">{{ contact_success }}</p>
+    {% endif %}
 
     <div class="contact-grid">
       <label>
         {{ tr('forms.name') }}
-        <input id="contact-name" name="name" type="text" required>
+        <input id="contact-name" name="name" type="text" value="{{ contact_form.name }}" required>
       </label>
 
       <label>
         {{ tr('forms.email') }}
-        <input id="contact-email" name="email" type="email" required>
+        <input id="contact-email" name="email" type="email" value="{{ contact_form.email }}" required>
       </label>
     </div>
 
     <label>
       {{ tr('forms.subject') }}
-      <input id="contact-subject" name="subject" type="text" required>
+      <input id="contact-subject" name="subject" type="text" value="{{ contact_form.subject }}" required>
     </label>
 
     <label>
       {{ tr('forms.message') }}
-      <textarea id="contact-message" name="message" rows="6" required></textarea>
+      <textarea id="contact-message" name="message" rows="6" required>{{ contact_form.message }}</textarea>
     </label>
 
     <button type="submit" class="button">{{ tr('forms.send') }}</button>
   </form>
 </section>
-
-<script>
-  (function () {
-    const form = document.getElementById("contact-form");
-    if (!form) return;
-
-    form.addEventListener("submit", function (event) {
-      event.preventDefault();
-
-      const name = document.getElementById("contact-name").value.trim();
-      const email = document.getElementById("contact-email").value.trim();
-      const subjectValue = document.getElementById("contact-subject").value.trim();
-      const message = document.getElementById("contact-message").value.trim();
-
-      const defaultSubject = {{ tr('contact.script.default_subject')|tojson }};
-      const subject = subjectValue || defaultSubject;
-      const body = [
-        {{ tr('contact.script.line_name')|tojson }} + name,
-        {{ tr('contact.script.line_email')|tojson }} + email,
-        "",
-        {{ tr('contact.script.line_message_title')|tojson }},
-        message,
-      ].join("\n");
-
-      window.location.href =
-        "mailto:contact@svhmanagement.fr?subject=" +
-        encodeURIComponent(subject) +
-        "&body=" +
-        encodeURIComponent(body);
-    });
-  })();
-</script>
 {% endblock %}
