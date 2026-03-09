@@ -3,7 +3,7 @@
   --title-dark: #1f1f1f;
   --accent: #c2a50e;
   --border: #d3d3d3;
-  --paper: rgb(214, 214, 214);
+  --paper: rgb(199, 220, 232);
   --soft-shadow: 0 10px 32px rgba(0, 0, 0, 0.08);
   --section-gap: 42px;
   --radius-soft: 8px;
@@ -72,7 +72,7 @@ textarea:focus-visible {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgb(214, 214, 214);
+  background: var(--paper);
   border-bottom: 1px solid #cccccc;
 }
 
@@ -542,7 +542,7 @@ body.page-accueil main.container.page-content {
 
 .svh-triptych-letter {
   font-weight: 700;
-  color: rgb(199, 220, 232);
+  color: rgb(163, 143, 61);
 }
 
 .svh-triptych-text {
