@@ -33,6 +33,14 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_first(*names: str, default: str = "") -> str:
+    for name in names:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return default
+
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "").strip() or "svh-management-local-secret-key"
 app.config["MAX_CONTENT_LENGTH"] = max(1, _env_int("MAX_CV_FILE_SIZE_MB", 10)) * 1024 * 1024
@@ -79,7 +87,7 @@ PHONE_PATTERN = re.compile(r"^[0-9+().\s-]{8,25}$")
 ISSUE_NUMBER_PATTERN = re.compile(r"N[°ºo]\s*(\d+)", re.IGNORECASE)
 DRIVE_FILE_ID_PATH_PATTERN = re.compile(r"/d/([A-Za-z0-9_-]{10,})")
 DRIVE_FILE_ID_QUERY_PATTERN = re.compile(r"[?&]id=([A-Za-z0-9_-]{10,})")
-SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_HOST = _env_first("SMTP_HOST")
 SMTP_PORT = max(1, _env_int("SMTP_PORT", 587))
 SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "").strip()
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").strip()
@@ -93,7 +101,7 @@ CONTACT_EMAIL_FROM = (
     or SMTP_USERNAME
     or CONTACT_EMAIL_TO
 )
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
+RESEND_API_KEY = _env_first("RESEND_API_KEY", "RESEND_APIKEY", "RESEND_KEY")
 RESEND_API_URL = os.environ.get("RESEND_API_URL", "https://api.resend.com/emails").strip()
 RESEND_EMAIL_FROM = os.environ.get("RESEND_EMAIL_FROM", "").strip() or CONTACT_EMAIL_FROM
 RESEND_EMAIL_TO = os.environ.get("RESEND_EMAIL_TO", "").strip() or CONTACT_EMAIL_TO
@@ -1594,6 +1602,14 @@ def _email_notifications_enabled() -> bool:
     return bool(SMTP_HOST and CONTACT_EMAIL_TO and CONTACT_EMAIL_FROM)
 
 
+def _email_transport_mode() -> str:
+    if RESEND_API_KEY and RESEND_EMAIL_FROM and RESEND_EMAIL_TO:
+        return "resend"
+    if SMTP_HOST and CONTACT_EMAIL_TO and CONTACT_EMAIL_FROM:
+        return "smtp"
+    return "none"
+
+
 def _send_email_notification(subject: str, body: str, *, reply_to: str = "") -> bool:
     normalized_subject = subject.strip() or "Nouveau message site SVH Management"
 
@@ -1893,7 +1909,12 @@ def set_language(lang_code: str):
 
 @app.route("/healthz")
 def healthz():
-    return {"status": "ok"}, 200
+    return {
+        "status": "ok",
+        "email_mode": _email_transport_mode(),
+        "resend_configured": bool(RESEND_API_KEY and RESEND_EMAIL_FROM and RESEND_EMAIL_TO),
+        "smtp_configured": bool(SMTP_HOST and CONTACT_EMAIL_TO and CONTACT_EMAIL_FROM),
+    }, 200
 
 
 def render_site_page(
