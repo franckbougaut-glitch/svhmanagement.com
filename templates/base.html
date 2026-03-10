@@ -102,53 +102,61 @@
 
 <script>
   (() => {
-    const targetEmail = "contact@svhmanagement.fr";
-    const skipTags = new Set(["A", "SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA", "INPUT"]);
-    const walker = document.createTreeWalker(
-      document.body,
-      NodeFilter.SHOW_TEXT,
-      {
-        acceptNode(node) {
-          if (!node.nodeValue || !node.nodeValue.includes(targetEmail)) {
-            return NodeFilter.FILTER_REJECT;
-          }
-          const parent = node.parentElement;
-          if (!parent || skipTags.has(parent.tagName)) {
-            return NodeFilter.FILTER_REJECT;
-          }
-          return NodeFilter.FILTER_ACCEPT;
-        },
-      }
-    );
-
-    const matches = [];
-    while (walker.nextNode()) {
-      matches.push(walker.currentNode);
-    }
-
-    matches.forEach((textNode) => {
-      const source = textNode.nodeValue || "";
-      const parts = source.split(targetEmail);
-      if (parts.length < 2 || !textNode.parentNode) {
+    try {
+      const targetEmail = "contact@svhmanagement.fr";
+      const skipTags = new Set(["A", "SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA", "INPUT"]);
+      if (!document.body || typeof NodeFilter === "undefined") {
         return;
       }
 
-      const fragment = document.createDocumentFragment();
-      parts.forEach((part, idx) => {
-        if (part) {
-          fragment.appendChild(document.createTextNode(part));
+      const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode(node) {
+            if (!node.nodeValue || !node.nodeValue.includes(targetEmail)) {
+              return NodeFilter.FILTER_REJECT;
+            }
+            const parent = node.parentElement;
+            if (!parent || skipTags.has(parent.tagName)) {
+              return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+          },
         }
-        if (idx < parts.length - 1) {
-          const link = document.createElement("a");
-          link.href = `mailto:${targetEmail}`;
-          link.textContent = targetEmail;
-          link.className = "mailto-linkified";
-          fragment.appendChild(link);
-        }
-      });
+      );
 
-      textNode.parentNode.replaceChild(fragment, textNode);
-    });
+      const matches = [];
+      while (walker.nextNode()) {
+        matches.push(walker.currentNode);
+      }
+
+      matches.forEach((textNode) => {
+        const source = textNode.nodeValue || "";
+        const parts = source.split(targetEmail);
+        if (parts.length < 2 || !textNode.parentNode) {
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        parts.forEach((part, idx) => {
+          if (part) {
+            fragment.appendChild(document.createTextNode(part));
+          }
+          if (idx < parts.length - 1) {
+            const link = document.createElement("a");
+            link.href = `mailto:${targetEmail}`;
+            link.textContent = targetEmail;
+            link.className = "mailto-linkified";
+            fragment.appendChild(link);
+          }
+        });
+
+        textNode.parentNode.replaceChild(fragment, textNode);
+      });
+    } catch (_error) {
+      // Keep navigation scripts running even if email linkification fails.
+    }
   })();
 
   (() => {

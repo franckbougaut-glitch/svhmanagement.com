@@ -1585,7 +1585,9 @@ blockquote p {
     gap: 6px;
   }
 
-  .top-nav.is-open .top-nav-right {
+  .top-nav.is-open .top-nav-right,
+  .top-nav-right.is-open,
+  .menu-toggle[aria-expanded="true"] + .top-nav-right {
     display: flex;
   }
 
