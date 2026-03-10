@@ -95,6 +95,7 @@
       <a href="{{ url_for('mentions_legales') }}#donnees-personnelles">Politique de confidentialité</a>
       <a href="{{ url_for('mentions_legales') }}#cgv">CGV</a>
       <a href="{{ url_for('contact_infos') }}">Contact</a>
+      <button type="button" class="site-footer-link-button" id="cookie-preferences-btn">Gérer les cookies</button>
     </nav>
   </div>
 </footer>
@@ -237,6 +238,7 @@
     const banner = document.getElementById("cookie-consent-banner");
     const acceptBtn = document.getElementById("cookie-accept-btn");
     const rejectBtn = document.getElementById("cookie-reject-btn");
+    const manageBtn = document.getElementById("cookie-preferences-btn");
     if (!banner || !acceptBtn || !rejectBtn) {
       return;
     }
@@ -257,6 +259,14 @@
         window.localStorage.setItem(storageKey, value);
       } catch (_error) {
         // Ignore storage errors and keep consent in current session only.
+      }
+    };
+
+    const clearChoice = () => {
+      try {
+        window.localStorage.removeItem(storageKey);
+      } catch (_error) {
+        // Ignore storage errors and continue.
       }
     };
 
@@ -298,6 +308,15 @@
     rejectBtn.addEventListener("click", () => {
       applyChoice("rejected");
     });
+
+    if (manageBtn) {
+      manageBtn.addEventListener("click", () => {
+        clearChoice();
+        document.documentElement.removeAttribute("data-cookie-consent");
+        showBanner();
+        acceptBtn.focus();
+      });
+    }
   })();
 </script>
 </body>

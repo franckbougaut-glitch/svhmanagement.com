@@ -331,7 +331,25 @@ textarea:focus-visible {
   text-underline-offset: 2px;
 }
 
+.site-footer-link-button {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: #1d1d1d;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
 .site-footer-links a:hover {
+  color: rgb(163, 143, 61);
+}
+
+.site-footer-link-button:hover {
   color: rgb(163, 143, 61);
 }
 
