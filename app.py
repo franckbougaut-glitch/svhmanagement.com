@@ -2465,6 +2465,17 @@ def contact_infos():
     )
 
 
+@app.route("/mentions-legales")
+def mentions_legales():
+    return render_site_page(
+        "mentions-legales.html",
+        page_title="S.V.H Management - Mentions légales",
+        active_key="contact",
+        hero_title="Mentions légales",
+        hero_image=_hero_image("contact"),
+    )
+
+
 # Legacy URLs kept for compatibility with the previous local prototype.
 @app.route("/about")
 def legacy_about():

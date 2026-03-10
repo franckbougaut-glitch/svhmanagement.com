@@ -278,6 +278,37 @@ textarea:focus-visible {
   padding: 40px 0 64px;
 }
 
+.site-footer {
+  border-top: 1px solid #c7c7c7;
+  background: var(--paper);
+  padding: 16px 0 24px;
+}
+
+.site-footer-inner {
+  display: flex;
+  justify-content: center;
+}
+
+.site-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.site-footer-links a {
+  color: #1d1d1d;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.site-footer-links a:hover {
+  color: rgb(163, 143, 61);
+}
+
 .page-content h1,
 .page-content h2,
 .page-content h3 {
@@ -627,6 +658,37 @@ body.page-accueil main.container.page-content {
   font-size: 1.03rem;
   line-height: 1.66;
   text-align: justify;
+}
+
+.legal-page {
+  max-width: 920px;
+}
+
+.legal-page h2 {
+  margin-bottom: 20px;
+}
+
+.legal-page h3 {
+  margin: 26px 0 10px;
+  font-size: clamp(1.16rem, 2vw, 1.34rem);
+  line-height: 1.3;
+}
+
+.legal-page p {
+  text-align: left;
+}
+
+.legal-page ul {
+  margin: 0 0 16px 22px;
+  padding: 0;
+}
+
+.legal-page li {
+  margin: 0 0 7px;
+}
+
+.legal-page [id] {
+  scroll-margin-top: 110px;
 }
 
 .about-franck {
@@ -1577,6 +1639,11 @@ blockquote p {
     padding: 28px 0 50px;
   }
 
+  .site-footer-links {
+    gap: 14px;
+    font-size: 0.92rem;
+  }
+
   .section + .section {
     margin-top: 32px;
   }
@@ -1829,6 +1896,20 @@ blockquote p {
 
   .page-content {
     padding: 24px 0 42px;
+  }
+
+  .site-footer {
+    padding: 14px 0 20px;
+  }
+
+  .site-footer-inner {
+    justify-content: flex-start;
+  }
+
+  .site-footer-links {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 
   .section + .section {

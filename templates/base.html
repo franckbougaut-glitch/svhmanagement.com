@@ -84,6 +84,17 @@
   {% block content %}{% endblock %}
 </main>
 
+<footer class="site-footer">
+  <div class="container site-footer-inner">
+    <nav class="site-footer-links" aria-label="Liens juridiques">
+      <a href="{{ url_for('mentions_legales') }}">Mentions légales</a>
+      <a href="{{ url_for('mentions_legales') }}#donnees-personnelles">Politique de confidentialité</a>
+      <a href="{{ url_for('mentions_legales') }}#cgv">CGV</a>
+      <a href="{{ url_for('contact_infos') }}">Contact</a>
+    </nav>
+  </div>
+</footer>
+
 <script>
   (() => {
     const targetEmail = "contact@svhmanagement.fr";
