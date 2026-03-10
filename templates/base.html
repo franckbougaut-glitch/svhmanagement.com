@@ -99,6 +99,22 @@
   </div>
 </footer>
 
+<aside class="cookie-consent" id="cookie-consent-banner" hidden aria-hidden="true" role="dialog" aria-live="polite">
+  <div class="cookie-consent-inner container">
+    <p class="cookie-consent-text">
+      Nous utilisons des cookies pour garantir le bon fonctionnement du site et améliorer votre expérience.
+      Vous pouvez accepter ou refuser les cookies non essentiels.
+    </p>
+    <div class="cookie-consent-actions">
+      <button type="button" class="cookie-btn cookie-btn-accept" id="cookie-accept-btn">Accepter</button>
+      <button type="button" class="cookie-btn cookie-btn-reject" id="cookie-reject-btn">Refuser</button>
+      <a class="cookie-btn cookie-btn-policy" href="{{ url_for('mentions_legales') }}#donnees-personnelles">
+        Politique de confidentialité
+      </a>
+    </div>
+  </div>
+</aside>
+
 <script>
   (() => {
     try {
@@ -215,6 +231,73 @@
     } else if (typeof mobileQuery.addListener === "function") {
       mobileQuery.addListener(onViewportChange);
     }
+  })();
+
+  (() => {
+    const banner = document.getElementById("cookie-consent-banner");
+    const acceptBtn = document.getElementById("cookie-accept-btn");
+    const rejectBtn = document.getElementById("cookie-reject-btn");
+    if (!banner || !acceptBtn || !rejectBtn) {
+      return;
+    }
+
+    const storageKey = "svh_cookie_consent";
+    const validChoices = new Set(["accepted", "rejected"]);
+
+    const readChoice = () => {
+      try {
+        return window.localStorage.getItem(storageKey);
+      } catch (_error) {
+        return null;
+      }
+    };
+
+    const writeChoice = (value) => {
+      try {
+        window.localStorage.setItem(storageKey, value);
+      } catch (_error) {
+        // Ignore storage errors and keep consent in current session only.
+      }
+    };
+
+    const hideBanner = () => {
+      banner.hidden = true;
+      banner.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("cookie-consent-visible");
+    };
+
+    const showBanner = () => {
+      banner.hidden = false;
+      banner.setAttribute("aria-hidden", "false");
+      document.body.classList.add("cookie-consent-visible");
+    };
+
+    const applyChoice = (choice) => {
+      if (!validChoices.has(choice)) {
+        return;
+      }
+      writeChoice(choice);
+      document.documentElement.setAttribute("data-cookie-consent", choice);
+      hideBanner();
+      window.dispatchEvent(new CustomEvent("svh:cookie-consent", { detail: { choice } }));
+    };
+
+    const existingChoice = readChoice();
+    if (existingChoice && validChoices.has(existingChoice)) {
+      document.documentElement.setAttribute("data-cookie-consent", existingChoice);
+      hideBanner();
+      return;
+    }
+
+    showBanner();
+
+    acceptBtn.addEventListener("click", () => {
+      applyChoice("accepted");
+    });
+
+    rejectBtn.addEventListener("click", () => {
+      applyChoice("rejected");
+    });
   })();
 </script>
 </body>
